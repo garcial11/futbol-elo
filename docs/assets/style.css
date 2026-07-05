@@ -1,0 +1,31 @@
+:root { --bg:#0f172a; --card:#1e293b; --fg:#e2e8f0; --muted:#94a3b8; --line:#334155; --accent:#38bdf8; }
+* { box-sizing: border-box; }
+body { margin:0; font:15px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+  background:var(--bg); color:var(--fg); }
+header { padding:1.25rem 1rem .5rem; max-width:960px; margin:0 auto; }
+h1 { margin:0 0 .25rem; font-size:1.5rem; }
+.meta { color:var(--muted); margin:0 0 .75rem; font-size:.85rem; }
+nav { display:flex; gap:.5rem; }
+.tab { background:var(--card); color:var(--fg); border:1px solid var(--line);
+  border-radius:8px; padding:.4rem .9rem; cursor:pointer; font-size:.9rem; }
+.tab.active { background:var(--accent); color:#04283a; border-color:var(--accent); font-weight:600; }
+main { max-width:960px; margin:0 auto; padding:1rem; }
+.view { display:none; } .view.active { display:block; }
+input[type=search], select { width:100%; max-width:360px; padding:.5rem .6rem;
+  background:var(--card); color:var(--fg); border:1px solid var(--line); border-radius:8px; }
+.table-wrap { overflow-x:auto; margin-top:.75rem; }
+table { border-collapse:collapse; width:100%; }
+th, td { text-align:left; padding:.45rem .6rem; border-bottom:1px solid var(--line); white-space:nowrap; }
+th { cursor:pointer; color:var(--muted); font-weight:600; user-select:none; }
+th:hover { color:var(--fg); }
+td:nth-child(3), th:nth-child(3) { font-variant-numeric:tabular-nums; }
+.stats { margin:.75rem 0; color:var(--muted); }
+.stats b { color:var(--fg); }
+.chart-wrap { position:relative; height:420px; background:var(--card); border:1px solid var(--line);
+  border-radius:12px; padding:.75rem; margin-top:.75rem; }
+.picker { display:flex; flex-wrap:wrap; gap:.4rem .9rem; max-height:220px; overflow-y:auto;
+  background:var(--card); border:1px solid var(--line); border-radius:12px; padding:.75rem; }
+.picker label { font-size:.85rem; display:flex; gap:.35rem; align-items:center; }
+.range { display:flex; gap:1rem; align-items:center; margin:.75rem 0; flex-wrap:wrap; }
+.hint { color:var(--muted); font-size:.85rem; }
+.mono { font-variant-numeric:tabular-nums; color:var(--muted); }

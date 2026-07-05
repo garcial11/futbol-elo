@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Futbol Elo Rankings</title>
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<header>
+  <h1>Futbol Elo Rankings</h1>
+  <p id="meta-line" class="meta"></p>
+  <nav>
+    <button class="tab active" data-view="rankings">Rankings</button>
+    <button class="tab" data-view="team">Team</button>
+    <button class="tab" data-view="compare">Compare</button>
+  </nav>
+</header>
+<main>
+  <section id="view-rankings" class="view active">
+    <input id="search" type="search" placeholder="Search team…" autocomplete="off">
+    <div class="table-wrap">
+      <table id="rankings-table">
+        <thead><tr>
+          <th data-key="rank">#</th>
+          <th data-key="team">Team</th>
+          <th data-key="rating">Rating</th>
+          <th data-key="matches">Matches</th>
+          <th data-key="peak">Peak</th>
+          <th data-key="last_match">Last match</th>
+        </tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="view-team" class="view">
+    <select id="team-select" aria-label="Choose a team"></select>
+    <div id="team-stats" class="stats"></div>
+    <div class="chart-wrap"><canvas id="team-chart"></canvas></div>
+  </section>
+
+  <section id="view-compare" class="view">
+    <p class="hint">Pick up to 5 teams.</p>
+    <div id="compare-picker" class="picker"></div>
+    <div class="range">
+      <label>From <input type="range" id="year-min"></label>
+      <label>To <input type="range" id="year-max"></label>
+      <span id="year-label" class="mono"></span>
+    </div>
+    <div class="chart-wrap"><canvas id="compare-chart"></canvas></div>
+  </section>
+</main>
+<script src="assets/chart.min.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>
