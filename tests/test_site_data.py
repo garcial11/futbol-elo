@@ -1,5 +1,44 @@
 import json
-from elo.site_data import write_site_data
+from elo.site_data import write_site_data, stamp_asset_versions
+
+
+def _site_with_assets(tmp_path):
+    (tmp_path / "assets").mkdir()
+    (tmp_path / "assets" / "app.js").write_text("console.log(1)")
+    (tmp_path / "assets" / "style.css").write_text("body{margin:0}")
+    (tmp_path / "index.html").write_text(
+        '<link rel="stylesheet" href="assets/style.css">\n'
+        '<script src="assets/app.js"></script>')
+    return tmp_path
+
+
+def test_stamp_adds_version_query(tmp_path):
+    site = _site_with_assets(tmp_path)
+    version = stamp_asset_versions(site)
+    html = (site / "index.html").read_text()
+    assert f'href="assets/style.css?v={version}"' in html
+    assert f'src="assets/app.js?v={version}"' in html
+
+
+def test_stamp_is_stable_and_not_duplicated(tmp_path):
+    site = _site_with_assets(tmp_path)
+    v1 = stamp_asset_versions(site)
+    v2 = stamp_asset_versions(site)  # unchanged assets -> same version, no double ?v=
+    assert v1 == v2
+    html = (site / "index.html").read_text()
+    assert html.count("?v=") == 2
+
+
+def test_stamp_changes_when_asset_changes(tmp_path):
+    site = _site_with_assets(tmp_path)
+    v1 = stamp_asset_versions(site)
+    (site / "assets" / "app.js").write_text("console.log(2)  // changed")
+    v2 = stamp_asset_versions(site)
+    assert v1 != v2
+
+
+def test_stamp_no_index_is_noop(tmp_path):
+    assert stamp_asset_versions(tmp_path) is None
 
 
 SITE = {

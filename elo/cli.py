@@ -12,6 +12,7 @@ from elo.deploy import deploy
 from elo.fetch import get_results
 from elo.pipeline import format_summary, run_update
 from elo.ratings import DEFAULT_K
+from elo.site_data import stamp_asset_versions
 
 OUT_DIR = Path("docs/data")
 SITE_DIR = Path("docs")
@@ -23,11 +24,13 @@ def cmd_update(args) -> int:
     csv_path = get_results(use_cache=args.no_fetch)
     site = run_update(csv_path, OUT_DIR, k=args.k, since=args.since,
                       generated_at=date.today().isoformat())
+    # Version app.js/style.css URLs so fresh HTML never pairs with stale cached JS.
+    stamp_asset_versions(SITE_DIR)
     print(format_summary(site))
     if args.no_push:
         return 0
     try:
-        pushed = deploy(paths=(str(OUT_DIR),),
+        pushed = deploy(paths=(str(SITE_DIR),),
                         message=f"Update ratings {site['meta']['generated_at']}")
         print("Pushed to GitHub Pages." if pushed else "No changes to publish.")
     except Exception as exc:  # noqa: BLE001 — surface, don't crash the run
