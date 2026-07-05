@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Futbol Elo Rankings</title>
-<link rel="stylesheet" href="assets/style.css?v=0b30dbdc">
+<link rel="stylesheet" href="assets/style.css?v=001a0bb9">
 </head>
 <body>
 <header>
@@ -21,7 +21,7 @@
 </header>
 <main>
   <section id="view-rankings" class="view active">
-    <input id="search" type="search" placeholder="Search team…" autocomplete="off">
+    <input id="search" type="search" placeholder="Search team…" autocomplete="off" aria-label="Search teams">
     <div class="asof">
       <label>Ranking as of <input type="date" id="asof-date"></label>
       <button id="asof-reset" class="btn-mini">Today</button>
@@ -54,7 +54,7 @@
     <p class="hint">Add up to 5 teams to compare.</p>
     <div class="compare-controls">
       <div class="combo">
-        <input id="team-search" type="search" placeholder="Type a team name…" autocomplete="off">
+        <input id="team-search" type="search" placeholder="Type a team name…" autocomplete="off" aria-label="Add a team to compare">
         <div id="team-results" class="results"></div>
       </div>
       <div id="compare-chips" class="chips"></div>
@@ -71,11 +71,11 @@
     <p class="hint">Pick two teams to see the points each would gain or lose, and the new rank, for every result.</p>
     <div class="whatif-pickers">
       <div class="combo">
-        <input id="wi-a" type="search" placeholder="First team…" autocomplete="off">
+        <input id="wi-a" type="search" placeholder="First team…" autocomplete="off" aria-label="First team">
         <div id="wi-a-results" class="results"></div>
       </div>
       <div class="combo">
-        <input id="wi-b" type="search" placeholder="Second team…" autocomplete="off">
+        <input id="wi-b" type="search" placeholder="Second team…" autocomplete="off" aria-label="Second team">
         <div id="wi-b-results" class="results"></div>
       </div>
     </div>
@@ -126,7 +126,8 @@
     </div>
   </section>
 </main>
-<script src="assets/chart.min.js"></script>
-<script src="assets/app.js?v=0b30dbdc"></script>
+<script src="assets/chart.min.js?v=001a0bb9"></script>
+<script src="assets/engine.js?v=001a0bb9"></script>
+<script src="assets/app.js?v=001a0bb9"></script>
 </body>
 </html>

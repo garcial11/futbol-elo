@@ -8,7 +8,7 @@ from pathlib import Path
 
 # Assets whose URL gets a ?v=<hash> so a new index.html can never be paired
 # with a stale, browser-cached copy of them.
-_VERSIONED_ASSETS = ("assets/app.js", "assets/style.css")
+_VERSIONED_ASSETS = ("assets/app.js", "assets/engine.js", "assets/style.css", "assets/chart.min.js")
 
 
 def write_site_data(site: dict, out_dir: str | Path) -> None:

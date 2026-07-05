@@ -1,17 +1,12 @@
-// Pure-Elo ratings, computed live in your browser from the open source dataset.
-// No precomputed files, no server, no update step — the page is current on every load.
-const CSV_SOURCES = [
-  "https://raw.githubusercontent.com/martj42/international_results/master/results.csv",
-  "https://cdn.jsdelivr.net/gh/martj42/international_results@master/results.csv",
-];
-const K_FACTOR = 32, INITIAL = 1500;
+// UI + data loading. The pure rating engine (CSV parse + Elo compute) lives in
+// engine.js, loaded before this file (its functions are globals here) and
+// unit-tested from Node against the Python reference (tests/test_js_parity.py).
 const COLORS = ["#38bdf8", "#f87171", "#4ade80", "#fbbf24", "#c084fc"];
 const state = { meta:null, rankings:[], teams:{}, sortKey:"rank", sortDir:1,
                 teamChart:null, compareChart:null, compare:new Set(),
                 asOf:null, asOfRows:[] };
 
 const rnd = n => Math.round(n);
-const round1 = x => Math.round(x * 10) / 10;
 const ts = d => Date.parse(d);
 const yearOf = d => +d.slice(0,4);
 const esc = s => s.replace(/[&<>"']/g, c =>
@@ -20,87 +15,14 @@ const getTeam = slug => state.teams[slug];   // in-memory; stays fine behind `aw
 
 async function loadCSV(){
   let err;
-  for(const url of CSV_SOURCES){
-    try { const r = await fetch(url); if(r.ok) return r.text(); err = new Error(`${url} -> ${r.status}`); }
-    catch(e){ err = e; }
+  for(let i = 0; i < CSV_SOURCES.length; i++){
+    try {
+      const r = await fetch(CSV_SOURCES[i]);
+      if(r.ok) return { text: await r.text(), fromFallback: i > 0 };
+      err = new Error(`${CSV_SOURCES[i]} -> ${r.status}`);
+    } catch(e){ err = e; }
   }
   throw err || new Error("no data source reachable");
-}
-function parseCSV(text){
-  if(text.charCodeAt(0) === 0xFEFF) text = text.slice(1);   // strip BOM if present
-  const rows = []; let field = "", row = [], inQ = false;
-  for(let i = 0; i < text.length; i++){
-    const c = text[i];
-    if(inQ){
-      if(c === '"'){ if(text[i + 1] === '"'){ field += '"'; i++; } else inQ = false; }
-      else field += c;
-    } else if(c === '"') inQ = true;
-    else if(c === ',') { row.push(field); field = ""; }
-    else if(c === '\n'){ row.push(field); rows.push(row); row = []; field = ""; }
-    else if(c !== '\r') field += c;
-  }
-  if(field.length || row.length){ row.push(field); rows.push(row); }
-  return rows;
-}
-const INT_RE = /^[+-]?\d+$/;
-const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
-function buildMatches(rows){
-  const H = rows[0], ci = n => H.indexOf(n);
-  const di = ci("date"), hti = ci("home_team"), ati = ci("away_team"),
-        hsi = ci("home_score"), asi = ci("away_score");
-  if([di, hti, ati, hsi, asi].some(x => x < 0))
-    throw new Error("CSV columns not as expected: " + H.join(","));
-  const need = Math.max(di, hti, ati, hsi, asi);
-  const matches = [];
-  for(let i = 1; i < rows.length; i++){
-    const r = rows[i];
-    if(r.length <= need) continue;
-    const date = (r[di] || "").trim();
-    if(!DATE_RE.test(date)) continue;   // drop malformed/hostile dates (keeps innerHTML + Date.parse safe)
-    const hs = (r[hsi] || "").trim(), as = (r[asi] || "").trim();
-    if(!INT_RE.test(hs) || !INT_RE.test(as)) continue;   // skip empty / "NA" / future fixtures
-    matches.push({ i, date, a: (r[hti] || "").trim(),
-                   b: (r[ati] || "").trim(), ga: +hs, gb: +as });
-  }
-  matches.sort((x, y) => x.date < y.date ? -1 : x.date > y.date ? 1 : x.i - y.i);  // stable by date
-  return matches;
-}
-function slugify(name){
-  return name.normalize("NFKD").replace(/[̀-ͯ]/g, "").toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
-}
-function computeSite(matches){
-  const ratings = {}, history = {};
-  for(const m of matches){
-    const ra = ratings[m.a] ?? INITIAL, rb = ratings[m.b] ?? INITIAL;
-    const ea = 1 / (1 + Math.pow(10, (rb - ra) / 400));
-    const sa = m.ga > m.gb ? 1 : m.ga === m.gb ? 0.5 : 0;
-    const na = ra + K_FACTOR * (sa - ea), nb = rb + K_FACTOR * ((1 - sa) - (1 - ea));
-    ratings[m.a] = na; ratings[m.b] = nb;
-    const rA = sa === 1 ? "W" : sa === 0 ? "L" : "D";
-    const rB = sa === 1 ? "L" : sa === 0 ? "W" : "D";
-    (history[m.a] || (history[m.a] = [])).push(
-      { date: m.date, rating: na, opponent: m.b, result: rA, score: `${m.ga}-${m.gb}` });
-    (history[m.b] || (history[m.b] = [])).push(
-      { date: m.date, rating: nb, opponent: m.a, result: rB, score: `${m.gb}-${m.ga}` });
-  }
-  const ordered = Object.keys(ratings).sort((a, b) => (ratings[b] - ratings[a]) || (a < b ? -1 : 1));
-  const taken = new Set(), rankings = [], teams = {};
-  ordered.forEach((team, i) => {
-    let base = slugify(team) || "team", slug = base, n = 2;
-    while(taken.has(slug)){ slug = `${base}-${n}`; n++; }
-    taken.add(slug);
-    const h = history[team];
-    let peak = h[0];
-    for(let j = 1; j < h.length; j++) if(h[j].rating > peak.rating) peak = h[j];
-    rankings.push({ rank: i + 1, team, slug, rating: round1(ratings[team]), matches: h.length,
-      last_match: h[h.length - 1].date, peak: round1(peak.rating), peak_date: peak.date });
-    teams[slug] = { team, slug, history: h.map(e => ({ date: e.date, rating: round1(e.rating),
-      opponent: e.opponent, result: e.result, score: e.score })) };
-  });
-  const meta = { k: K_FACTOR, match_count: matches.length, team_count: ordered.length,
-    date_range: [matches[0].date, matches[matches.length - 1].date] };
-  return { rankings, teams, meta };
 }
 
 // tabs
@@ -428,10 +350,11 @@ function fillMethod(){
 (async function(){
   const metaLine = document.getElementById("meta-line");
   metaLine.textContent = "Computing ratings from the latest results…";
-  let site;
+  let site, fromFallback = false;
   try {
-    const text = await loadCSV();
-    site = computeSite(buildMatches(parseCSV(text)));
+    const loaded = await loadCSV();
+    fromFallback = loaded.fromFallback;
+    site = computeSite(buildMatches(parseCSV(loaded.text)));
   } catch(e){
     console.error(e);
     metaLine.textContent = "Couldn't load the live match data (source unavailable or its format changed). Try a hard-refresh.";
@@ -440,7 +363,8 @@ function fillMethod(){
   state.meta = site.meta; state.rankings = site.rankings; state.teams = site.teams;
   metaLine.textContent =
     `${state.meta.team_count} teams · ${state.meta.match_count.toLocaleString()} matches · ` +
-    `K=${state.meta.k} · computed live · latest ${state.meta.date_range[1]}`;
+    `K=${state.meta.k} · computed live · latest ${state.meta.date_range[1]}` +
+    (fromFallback ? " · via mirror (may lag)" : "");
   const y0 = yearOf(state.meta.date_range[0]), y1 = yearOf(state.meta.date_range[1]);
   for(const id of ["year-min","year-max"]){
     const el = document.getElementById(id); el.min = y0; el.max = y1;

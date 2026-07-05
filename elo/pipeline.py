@@ -27,6 +27,8 @@ def load_matches(csv_path: str | Path, since: int | None = None) -> list[Match]:
             if goals_a is None or goals_b is None:
                 continue
             date = row["date"].strip()
+            if len(date) < 4 or not date[:4].isdigit():
+                continue                       # drop malformed dates (mirrors the JS DATE_RE guard)
             if since is not None and int(date[:4]) < since:
                 continue
             rows.append((i, Match(
