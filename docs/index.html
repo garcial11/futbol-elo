@@ -14,6 +14,7 @@
     <button class="tab active" data-view="rankings">Rankings</button>
     <button class="tab" data-view="team">Team</button>
     <button class="tab" data-view="compare">Compare</button>
+    <button class="tab" data-view="method">Method</button>
   </nav>
 </header>
 <main>
@@ -41,14 +42,62 @@
   </section>
 
   <section id="view-compare" class="view">
-    <p class="hint">Pick up to 5 teams.</p>
-    <div id="compare-picker" class="picker"></div>
+    <p class="hint">Add up to 5 teams to compare.</p>
+    <div class="compare-controls">
+      <div class="combo">
+        <input id="team-search" type="search" placeholder="Type a team name…" autocomplete="off">
+        <div id="team-results" class="results"></div>
+      </div>
+      <div id="compare-chips" class="chips"></div>
+    </div>
     <div class="range">
       <label>From <input type="range" id="year-min"></label>
       <label>To <input type="range" id="year-max"></label>
       <span id="year-label" class="mono"></span>
     </div>
     <div class="chart-wrap"><canvas id="compare-chart"></canvas></div>
+  </section>
+
+  <section id="view-method" class="view">
+    <div class="method">
+      <h2>How the ranking is calculated</h2>
+      <p>These ratings use a <b>pure Elo</b> system, the same method used to rank chess
+        players, applied to national teams. Nothing else is mixed in.</p>
+
+      <h3>The idea</h3>
+      <ul>
+        <li>Every team starts at <b>1500</b>.</li>
+        <li>After each match the winner takes points from the loser. Beating a strong team
+          is worth more than beating a weak one; a bad loss costs more.</li>
+        <li>A draw moves points from the higher-rated team toward the lower-rated one.</li>
+      </ul>
+
+      <h3>The math</h3>
+      <p>Before a match, each team's expected result is:</p>
+      <pre class="formula">E = 1 / (1 + 10^((opponent − you) / 400))</pre>
+      <p>After the match, the rating changes by:</p>
+      <pre class="formula">new rating = rating + K × (actual − E)</pre>
+      <p><span class="mono">actual</span> = 1 for a win, 0.5 for a draw, 0 for a loss.
+        <span class="mono">K = <span id="m-k"></span></span> sets how much a single match can move a rating.</p>
+
+      <h3>What is deliberately ignored</h3>
+      <p>Because it is "pure" Elo, and unlike FIFA's ranking or eloratings.net, it makes
+        <b>no</b> adjustment for:</p>
+      <ul>
+        <li><b>Goal margin</b> — a 1–0 win counts exactly like a 5–0 win.</li>
+        <li><b>Match importance</b> — a friendly moves ratings the same as a World Cup final.</li>
+        <li><b>Home advantage</b> — the venue is not considered.</li>
+      </ul>
+
+      <h3>The data</h3>
+      <p>Ratings are computed from every men's international on record
+        (<span id="m-matches"></span> matches, <span id="m-range"></span>,
+        <span id="m-teams"></span> teams), from the community-maintained
+        <a href="https://github.com/martj42/international_results" target="_blank" rel="noopener">martj42/international_results</a>
+        dataset. Teams are kept exactly as recorded, so historical sides like West Germany and
+        Germany stay separate. Every update recomputes all ratings from scratch, so corrections
+        to old results are picked up automatically.</p>
+    </div>
   </section>
 </main>
 <script src="assets/chart.min.js"></script>

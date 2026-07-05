@@ -79,21 +79,59 @@ async function renderTeam(slug){
     lineConfig([{ label: t.team, data, color: COLORS[0] }]));
 }
 
-// compare view
-function buildPicker(){
-  const p = document.getElementById("compare-picker");
-  p.innerHTML = state.rankings.map(t =>
-    `<label><input type="checkbox" value="${t.slug}"> ${esc(t.team)}</label>`).join("");
-  p.querySelectorAll("input").forEach(cb => cb.addEventListener("change", onCompareToggle));
+// compare view — search box + removable chips (up to 5 teams)
+const teamName = slug => (state.rankings.find(t => t.slug === slug) || {}).team || slug;
+
+function renderChips(){
+  const box = document.getElementById("compare-chips");
+  box.innerHTML = [...state.compare].map((slug, i) =>
+    `<span class="chip" style="border-color:${COLORS[i % COLORS.length]}">` +
+      `<span class="dot" style="background:${COLORS[i % COLORS.length]}"></span>` +
+      `${esc(teamName(slug))}` +
+      `<button class="chip-x" data-slug="${slug}" aria-label="Remove ${esc(teamName(slug))}">×</button>` +
+    `</span>`).join("");
+  box.querySelectorAll(".chip-x").forEach(b =>
+    b.addEventListener("click", () => removeTeam(b.dataset.slug)));
 }
-async function onCompareToggle(e){
-  const slug = e.target.value;
-  if(e.target.checked){
-    if(state.compare.size >= 5){ e.target.checked = false; return; }
-    state.compare.add(slug);
-  } else state.compare.delete(slug);
+
+function renderResults(){
+  const q = document.getElementById("team-search").value.trim().toLowerCase();
+  const box = document.getElementById("team-results");
+  const full = state.compare.size >= 5;
+  const matches = !q || full ? [] : state.rankings
+    .filter(t => !state.compare.has(t.slug) && t.team.toLowerCase().includes(q))
+    .slice(0, 8);
+  box.innerHTML = full && q
+    ? `<div class="result-note">Remove a team first (max 5).</div>`
+    : matches.map(t =>
+        `<button class="result" data-slug="${t.slug}">${esc(t.team)} ` +
+        `<span class="mono">${rnd(t.rating)}</span></button>`).join("");
+  box.classList.toggle("open", (matches.length > 0) || (full && !!q));
+  box.querySelectorAll(".result").forEach(btn =>
+    btn.addEventListener("click", () => addTeam(btn.dataset.slug)));
+}
+
+async function addTeam(slug){
+  if(state.compare.size >= 5 || state.compare.has(slug)) return;
+  state.compare.add(slug);
+  const search = document.getElementById("team-search");
+  search.value = "";
+  search.focus();
+  renderResults();
+  renderChips();
   await renderCompare();
 }
+async function removeTeam(slug){
+  state.compare.delete(slug);
+  renderResults();
+  renderChips();
+  await renderCompare();
+}
+document.getElementById("team-search").addEventListener("input", renderResults);
+document.addEventListener("click", e => {
+  if(!e.target.closest("#view-compare .combo"))
+    document.getElementById("team-results").classList.remove("open");
+});
 function labelRange(){
   const lo = document.getElementById("year-min").value, hi = document.getElementById("year-max").value;
   document.getElementById("year-label").textContent = `${lo}–${hi}`;
@@ -114,6 +152,15 @@ async function renderCompare(){
   if(state.compare.size) renderCompare(); else labelRange();
 }));
 
+// method tab — fill live figures from meta
+function fillMethod(){
+  const m = state.meta;
+  document.getElementById("m-k").textContent = m.k;
+  document.getElementById("m-matches").textContent = m.match_count.toLocaleString();
+  document.getElementById("m-teams").textContent = m.team_count;
+  document.getElementById("m-range").textContent = `${m.date_range[0]} to ${m.date_range[1]}`;
+}
+
 // init
 (async function(){
   state.meta = await loadJSON(`${DATA}/meta.json`);
@@ -132,6 +179,7 @@ async function renderCompare(){
   sel.innerHTML = state.rankings.map(t => `<option value="${t.slug}">${esc(t.team)}</option>`).join("");
   sel.addEventListener("change", () => renderTeam(sel.value));
   renderRankings();
-  buildPicker();
+  renderChips();
+  fillMethod();
   if(state.rankings.length) renderTeam(state.rankings[0].slug);
 })();
