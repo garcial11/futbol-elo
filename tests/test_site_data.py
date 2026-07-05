@@ -67,3 +67,11 @@ def test_clears_stale_team_files(tmp_path):
     write_site_data(SITE, tmp_path)
     assert not (tmp_path / "teams" / "old.json").exists()
     assert (tmp_path / "teams" / "a.json").exists()
+
+
+def test_writes_compact_history(tmp_path):
+    write_site_data(SITE, tmp_path)
+    hist = json.loads((tmp_path / "history.json").read_text())
+    # one entry per team, each carrying its name and [date, rating] points
+    assert hist["a"]["t"] == "A"
+    assert hist["a"]["h"] == [["2000-01-01", 1516.0]]

@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Futbol Elo Rankings</title>
-<link rel="stylesheet" href="assets/style.css?v=acff67b5">
+<link rel="stylesheet" href="assets/style.css?v=d557faa2">
 </head>
 <body>
 <header>
@@ -21,6 +21,11 @@
 <main>
   <section id="view-rankings" class="view active">
     <input id="search" type="search" placeholder="Search team…" autocomplete="off">
+    <div class="asof">
+      <label>Ranking as of <input type="date" id="asof-date"></label>
+      <button id="asof-reset" class="btn-mini">Today</button>
+      <span id="asof-label" class="mono"></span>
+    </div>
     <div class="table-wrap">
       <table id="rankings-table">
         <thead><tr>
@@ -40,6 +45,8 @@
     <select id="team-select" aria-label="Choose a team"></select>
     <div id="team-stats" class="stats"></div>
     <div class="chart-wrap"><canvas id="team-chart"></canvas></div>
+    <h3 class="recent-title">Last 10 matches</h3>
+    <div id="team-recent" class="recent"></div>
   </section>
 
   <section id="view-compare" class="view">
@@ -117,6 +124,6 @@
   </section>
 </main>
 <script src="assets/chart.min.js"></script>
-<script src="assets/app.js?v=acff67b5"></script>
+<script src="assets/app.js?v=d557faa2"></script>
 </body>
 </html>

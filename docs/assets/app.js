@@ -1,7 +1,9 @@
 const DATA = "data";
 const COLORS = ["#38bdf8", "#f87171", "#4ade80", "#fbbf24", "#c084fc"];
 const state = { meta:null, rankings:[], cache:{}, sortKey:"rank", sortDir:1,
-                teamChart:null, compareChart:null, compare:new Set() };
+                teamChart:null, compareChart:null, compare:new Set(),
+                asOf:null, asOfRows:[] };
+let historyData = null;
 
 async function loadJSON(p){ const r = await fetch(p); if(!r.ok) throw new Error(p); return r.json(); }
 async function getTeam(slug){
@@ -26,13 +28,49 @@ document.querySelectorAll(".tab").forEach(btn => btn.addEventListener("click", (
 function renderRankings(){
   const q = document.getElementById("search").value.toLowerCase();
   const k = state.sortKey, dir = state.sortDir;
-  const rows = state.rankings
+  const source = state.asOf ? state.asOfRows : state.rankings;
+  const rows = source
     .filter(t => t.team.toLowerCase().includes(q))
     .sort((a,b) => (a[k] > b[k] ? 1 : a[k] < b[k] ? -1 : 0) * dir);
   document.querySelector("#rankings-table tbody").innerHTML = rows.map(t =>
     `<tr><td>${t.rank}</td><td>${esc(t.team)}</td><td>${rnd(t.rating)}</td>` +
     `<td>${t.matches}</td><td>${rnd(t.peak)}</td><td>${t.last_match}</td></tr>`).join("");
 }
+
+// ranking as of a past date, reconstructed from the consolidated history file
+async function loadHistory(){
+  if(!historyData) historyData = await loadJSON(`${DATA}/history.json`);
+  return historyData;
+}
+function computeAsOf(dateStr){
+  const rows = [];
+  for(const slug in historyData){
+    const { t, h } = historyData[slug];
+    let rating = null, matches = 0, peak = -1, last = null;
+    for(const [d, r] of h){            // history is chronological; ISO dates sort as strings
+      if(d <= dateStr){ rating = r; matches++; if(r > peak) peak = r; last = d; }
+      else break;
+    }
+    if(rating !== null) rows.push({ team: t, slug, rating, matches, peak, last_match: last });
+  }
+  rows.sort((a,b) => b.rating - a.rating || (a.team < b.team ? -1 : 1));
+  rows.forEach((row, i) => row.rank = i + 1);
+  return rows;
+}
+async function applyAsOf(dateStr){
+  const label = document.getElementById("asof-label");
+  if(!dateStr){ state.asOf = null; label.textContent = ""; renderRankings(); return; }
+  await loadHistory();
+  state.asOf = dateStr;
+  state.asOfRows = computeAsOf(dateStr);
+  label.textContent = `${state.asOfRows.length} teams had played by ${dateStr}`;
+  renderRankings();
+}
+document.getElementById("asof-date").addEventListener("change", e => applyAsOf(e.target.value));
+document.getElementById("asof-reset").addEventListener("click", () => {
+  document.getElementById("asof-date").value = "";
+  applyAsOf(null);
+});
 document.getElementById("search").addEventListener("input", renderRankings);
 document.querySelectorAll("#rankings-table th").forEach(th => th.addEventListener("click", () => {
   const key = th.dataset.key;
@@ -77,6 +115,26 @@ async function renderTeam(slug){
   if(state.teamChart) state.teamChart.destroy();
   state.teamChart = new Chart(document.getElementById("team-chart"),
     lineConfig([{ label: t.team, data, color: COLORS[0] }]));
+  renderRecent(t);
+}
+
+// last 10 matches, most recent first, with the rating change each caused
+function renderRecent(t){
+  const h = t.history;
+  const rows = [];
+  for(let i = h.length - 1; i >= 0 && rows.length < 10; i--){
+    const prev = i > 0 ? h[i - 1].rating : 1500;   // first-ever match starts from 1500
+    rows.push(
+      `<tr><td>${h[i].date}</td><td>${esc(h[i].opponent)}</td>` +
+      `<td class="res-${h[i].result}">${h[i].result}</td>` +
+      `<td class="num">${h[i].score}</td>` +
+      `<td class="num">${rnd(h[i].rating)}</td>` +
+      `<td class="num">${deltaSpan(h[i].rating - prev)}</td></tr>`);
+  }
+  document.getElementById("team-recent").innerHTML =
+    `<table><thead><tr><th>Date</th><th>Opponent</th><th>Res</th>` +
+    `<th>Score</th><th>Rating</th><th>Δ</th></tr></thead>` +
+    `<tbody>${rows.join("")}</tbody></table>`;
 }
 
 // compare view — search box + removable chips (up to 5 teams)
@@ -264,6 +322,9 @@ function fillMethod(){
   for(const id of ["year-min","year-max"]){
     const el = document.getElementById(id); el.min = y0; el.max = y1;
   }
+  const asof = document.getElementById("asof-date");
+  asof.min = state.meta.date_range[0];
+  asof.max = state.meta.date_range[1];
   document.getElementById("year-min").value = y0;
   document.getElementById("year-max").value = y1;
   labelRange();

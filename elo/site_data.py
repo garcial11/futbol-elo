@@ -25,6 +25,15 @@ def write_site_data(site: dict, out_dir: str | Path) -> None:
         (teams_dir / f"{slug}.json").write_text(
             json.dumps(team, separators=(",", ":")), encoding="utf-8")
 
+    # Consolidated (date, rating) history for every team, so the site can
+    # reconstruct the ranking as of any past date from a single file.
+    history = {
+        slug: {"t": team["team"], "h": [[h["date"], h["rating"]] for h in team["history"]]}
+        for slug, team in site["teams"].items()
+    }
+    (out / "history.json").write_text(
+        json.dumps(history, separators=(",", ":")), encoding="utf-8")
+
 
 def stamp_asset_versions(site_dir: str | Path) -> str | None:
     """Rewrite index.html so app.js/style.css carry a ?v=<hash> of their content.
