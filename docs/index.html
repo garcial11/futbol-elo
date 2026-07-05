@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Futbol Elo Rankings</title>
-<link rel="stylesheet" href="assets/style.css?v=00a4a943">
+<link rel="stylesheet" href="assets/style.css?v=acff67b5">
 </head>
 <body>
 <header>
@@ -14,6 +14,7 @@
     <button class="tab active" data-view="rankings">Rankings</button>
     <button class="tab" data-view="team">Team</button>
     <button class="tab" data-view="compare">Compare</button>
+    <button class="tab" data-view="whatif">What if?</button>
     <button class="tab" data-view="method">Method</button>
   </nav>
 </header>
@@ -56,6 +57,21 @@
       <span id="year-label" class="mono"></span>
     </div>
     <div class="chart-wrap"><canvas id="compare-chart"></canvas></div>
+  </section>
+
+  <section id="view-whatif" class="view">
+    <p class="hint">Pick two teams to see the points each would gain or lose, and the new rank, for every result.</p>
+    <div class="whatif-pickers">
+      <div class="combo">
+        <input id="wi-a" type="search" placeholder="First team…" autocomplete="off">
+        <div id="wi-a-results" class="results"></div>
+      </div>
+      <div class="combo">
+        <input id="wi-b" type="search" placeholder="Second team…" autocomplete="off">
+        <div id="wi-b-results" class="results"></div>
+      </div>
+    </div>
+    <div id="wi-output"></div>
   </section>
 
   <section id="view-method" class="view">
@@ -101,6 +117,6 @@
   </section>
 </main>
 <script src="assets/chart.min.js"></script>
-<script src="assets/app.js?v=00a4a943"></script>
+<script src="assets/app.js?v=acff67b5"></script>
 </body>
 </html>

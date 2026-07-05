@@ -128,9 +128,11 @@ async function removeTeam(slug){
   await renderCompare();
 }
 document.getElementById("team-search").addEventListener("input", renderResults);
+// close any open dropdown when clicking outside its combo
 document.addEventListener("click", e => {
-  if(!e.target.closest("#view-compare .combo"))
-    document.getElementById("team-results").classList.remove("open");
+  document.querySelectorAll(".results.open").forEach(r => {
+    if(!r.closest(".combo").contains(e.target)) r.classList.remove("open");
+  });
 });
 function labelRange(){
   const lo = document.getElementById("year-min").value, hi = document.getElementById("year-max").value;
@@ -151,6 +153,96 @@ async function renderCompare(){
 ["year-min","year-max"].forEach(id => document.getElementById(id).addEventListener("input", () => {
   if(state.compare.size) renderCompare(); else labelRange();
 }));
+
+// reusable single-select team picker (used by the What-if calculator)
+function attachPicker(inputId, resultsId, onPick, isExcluded){
+  const input = document.getElementById(inputId);
+  const results = document.getElementById(resultsId);
+  input.addEventListener("input", () => {
+    const q = input.value.trim().toLowerCase();
+    const matches = !q ? [] : state.rankings
+      .filter(t => t.team.toLowerCase().includes(q) && !(isExcluded && isExcluded(t.slug)))
+      .slice(0, 8);
+    results.innerHTML = matches.map(t =>
+      `<button class="result" data-slug="${t.slug}">${esc(t.team)} ` +
+      `<span class="mono">${rnd(t.rating)}</span></button>`).join("");
+    results.classList.toggle("open", matches.length > 0);
+    results.querySelectorAll(".result").forEach(b =>
+      b.addEventListener("click", () => onPick(b.dataset.slug)));
+  });
+}
+
+// what-if calculator: pure-Elo point + rank change for a hypothetical match
+const wi = { a: null, b: null };
+const wiExpected = (rA, rB) => 1 / (1 + Math.pow(10, (rB - rA) / 400));
+
+function wiRankOf(slug, over){
+  const target = over[slug];
+  let rank = 1;
+  for(const t of state.rankings){
+    if(t.slug === slug) continue;
+    const r = over[t.slug] !== undefined ? over[t.slug] : t.rating;
+    if(r > target) rank++;
+  }
+  return rank;
+}
+function deltaSpan(d){
+  const v = Math.round(d);
+  const cls = v > 0 ? "up" : v < 0 ? "down" : "flat";
+  const sign = v > 0 ? "+" : v < 0 ? "−" : "±";
+  return `<span class="${cls}">${sign}${Math.abs(v)}</span>`;
+}
+function rankArrow(oldR, newR){
+  if(newR < oldR) return `<span class="up">#${oldR} → #${newR} ▲</span>`;
+  if(newR > oldR) return `<span class="down">#${oldR} → #${newR} ▼</span>`;
+  return `<span class="flat">#${oldR} → #${newR}</span>`;
+}
+function wiTeamLine(t, cur, nw, oldRank, newRank, color){
+  return `<div class="wi-team"><span class="dot" style="background:${color}"></span>` +
+    `${esc(t.team)} ${rnd(cur)} → <b>${rnd(nw)}</b> ${deltaSpan(nw - cur)} · ` +
+    `${rankArrow(oldRank, newRank)}</div>`;
+}
+function renderWhatIf(){
+  const out = document.getElementById("wi-output");
+  if(!(wi.a && wi.b)){ out.innerHTML = ""; return; }
+  const A = state.rankings.find(t => t.slug === wi.a);
+  const B = state.rankings.find(t => t.slug === wi.b);
+  const K = state.meta.k;
+  const eA = wiExpected(A.rating, B.rating);
+  const scenarios = [
+    { label: `${A.team} wins`, sA: 1 },
+    { label: "Draw", sA: 0.5 },
+    { label: `${B.team} wins`, sA: 0 },
+  ];
+  const rows = scenarios.map(s => {
+    const dA = K * (s.sA - eA);
+    const nA = A.rating + dA, nB = B.rating - dA;
+    const over = { [A.slug]: nA, [B.slug]: nB };
+    return `<div class="wi-row"><div class="wi-label">${esc(s.label)}</div>` +
+      wiTeamLine(A, A.rating, nA, A.rank, wiRankOf(A.slug, over), COLORS[0]) +
+      wiTeamLine(B, B.rating, nB, B.rank, wiRankOf(B.slug, over), COLORS[1]) +
+      `</div>`;
+  }).join("");
+  out.innerHTML =
+    `<div class="wi-head"><b>${esc(A.team)}</b> #${A.rank} · ${rnd(A.rating)} ` +
+    `<span class="wi-vs">vs</span> <b>${esc(B.team)}</b> #${B.rank} · ${rnd(B.rating)}` +
+    `<div class="wi-prob">${esc(A.team)} win probability: ${Math.round(eA * 100)}%</div></div>` +
+    `<div class="wi-scenarios">${rows}</div>`;
+}
+function setupWhatIf(){
+  attachPicker("wi-a", "wi-a-results", slug => {
+    wi.a = slug;
+    document.getElementById("wi-a").value = teamName(slug);
+    document.getElementById("wi-a-results").classList.remove("open");
+    renderWhatIf();
+  }, slug => slug === wi.b);
+  attachPicker("wi-b", "wi-b-results", slug => {
+    wi.b = slug;
+    document.getElementById("wi-b").value = teamName(slug);
+    document.getElementById("wi-b-results").classList.remove("open");
+    renderWhatIf();
+  }, slug => slug === wi.a);
+}
 
 // method tab — fill live figures from meta
 function fillMethod(){
@@ -180,6 +272,7 @@ function fillMethod(){
   sel.addEventListener("change", () => renderTeam(sel.value));
   renderRankings();
   renderChips();
+  setupWhatIf();
   fillMethod();
   if(state.rankings.length) renderTeam(state.rankings[0].slug);
 })();
