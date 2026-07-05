@@ -260,7 +260,7 @@ function wiTeamLine(t, cur, nw, oldRank, newRank, color){
     `${esc(t.team)} ${rnd(cur)} → <b>${rnd(nw)}</b> ${deltaSpan(nw - cur)} · ` +
     `${rankArrow(oldRank, newRank)}</div>`;
 }
-function renderWhatIf(){
+async function renderWhatIf(){
   const out = document.getElementById("wi-output");
   if(!(wi.a && wi.b)){ out.innerHTML = ""; return; }
   const A = state.rankings.find(t => t.slug === wi.a);
@@ -285,7 +285,34 @@ function renderWhatIf(){
     `<div class="wi-head"><b>${esc(A.team)}</b> #${A.rank} · ${rnd(A.rating)} ` +
     `<span class="wi-vs">vs</span> <b>${esc(B.team)}</b> #${B.rank} · ${rnd(B.rating)}` +
     `<div class="wi-prob">${esc(A.team)} win probability: ${Math.round(eA * 100)}%</div></div>` +
-    `<div class="wi-scenarios">${rows}</div>`;
+    `<div class="wi-scenarios">${rows}</div>` +
+    `<div id="wi-h2h" class="wi-h2h"></div>`;
+
+  // head-to-head history, pulled from A's match file (guard against fast re-selection)
+  const data = await getTeam(A.slug);
+  if(wi.a !== A.slug || wi.b !== B.slug) return;
+  renderH2H(A, B, data.history.filter(m => m.opponent === B.team));
+}
+
+function renderH2H(A, B, h2h){
+  const box = document.getElementById("wi-h2h");
+  if(!box) return;
+  if(!h2h.length){
+    box.innerHTML = `<h3 class="wi-h2h-title">Head-to-head</h3>` +
+      `<p class="hint">${esc(A.team)} and ${esc(B.team)} have never played.</p>`;
+    return;
+  }
+  const rec = h2h.reduce((a, m) => (a[m.result]++, a), { W: 0, D: 0, L: 0 });
+  const list = h2h.slice().reverse().map(m =>   // most recent first
+    `<tr><td>${m.date}</td><td class="res-${m.result}">${m.result}</td>` +
+    `<td class="num">${m.score}</td></tr>`).join("");
+  box.innerHTML =
+    `<h3 class="wi-h2h-title">Head-to-head · ${h2h.length} match${h2h.length > 1 ? "es" : ""}</h3>` +
+    `<div class="wi-h2h-summary">${esc(A.team)} ` +
+      `<span class="up">${rec.W}W</span>-${rec.D}D-<span class="down">${rec.L}L</span> ` +
+      `${esc(B.team)}</div>` +
+    `<div class="recent h2h-scroll"><table><thead><tr>` +
+      `<th>Date</th><th>Res</th><th>Score</th></tr></thead><tbody>${list}</tbody></table></div>`;
 }
 function setupWhatIf(){
   attachPicker("wi-a", "wi-a-results", slug => {
