@@ -4,6 +4,8 @@ Pure-Elo ratings for men's international football. One command pulls the latest
 results, recomputes every team's Elo from 1872 to today, and publishes a static
 site.
 
+**Live site:** https://garcial11.github.io/futbol-elo/
+
 ## Elo model
 
 - Win = 1, draw = 0.5, loss = 0. Goal margin is ignored.
