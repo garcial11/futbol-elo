@@ -375,12 +375,19 @@ function fillMethod(){
   document.getElementById("year-min").value = y0;
   document.getElementById("year-max").value = y1;
   labelRange();
-  const sel = document.getElementById("team-select");
-  sel.innerHTML = state.rankings.map(t => `<option value="${t.slug}">${esc(t.team)}</option>`).join("");
-  sel.addEventListener("change", () => renderTeam(sel.value));
+  attachPicker("team-pick", "team-pick-results", slug => {
+    document.getElementById("team-pick").value = teamName(slug);
+    document.getElementById("team-pick-results").classList.remove("open");
+    renderTeam(slug);
+  });
+  document.getElementById("team-pick").addEventListener("focus", e => e.target.select());
   renderRankings();
   renderChips();
   setupWhatIf();
   fillMethod();
-  if(state.rankings.length) renderTeam(state.rankings[0].slug);
+  if(state.rankings.length){
+    const first = state.rankings[0].slug;
+    document.getElementById("team-pick").value = teamName(first);
+    renderTeam(first);
+  }
 })();

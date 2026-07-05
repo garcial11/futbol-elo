@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Futbol Elo Rankings</title>
-<link rel="stylesheet" href="assets/style.css?v=001a0bb9">
+<link rel="stylesheet" href="assets/style.css?v=f5589aac">
 </head>
 <body>
 <header>
@@ -43,7 +43,10 @@
   </section>
 
   <section id="view-team" class="view">
-    <select id="team-select" aria-label="Choose a team"></select>
+    <div class="combo">
+      <input id="team-pick" type="search" placeholder="Search a team…" autocomplete="off" aria-label="Choose a team">
+      <div id="team-pick-results" class="results"></div>
+    </div>
     <div id="team-stats" class="stats"></div>
     <div class="chart-wrap"><canvas id="team-chart"></canvas></div>
     <h3 class="recent-title">Last 10 matches</h3>
@@ -126,8 +129,8 @@
     </div>
   </section>
 </main>
-<script src="assets/chart.min.js?v=001a0bb9"></script>
-<script src="assets/engine.js?v=001a0bb9"></script>
-<script src="assets/app.js?v=001a0bb9"></script>
+<script src="assets/chart.min.js?v=f5589aac"></script>
+<script src="assets/engine.js?v=f5589aac"></script>
+<script src="assets/app.js?v=f5589aac"></script>
 </body>
 </html>
