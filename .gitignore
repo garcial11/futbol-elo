@@ -1,0 +1,12 @@
+# Cached raw dataset (re-downloaded on demand)
+data/raw/
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+
+# OS
+.DS_Store
