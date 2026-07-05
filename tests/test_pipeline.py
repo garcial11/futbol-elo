@@ -21,6 +21,15 @@ def test_load_skips_missing_scores(tmp_path):
     assert matches[0].team_a == "A" and matches[0].goals_a == 1
 
 
+def test_load_skips_non_integer_scores(tmp_path):
+    # The live dataset uses "NA" (not just empty) for unplayed/unknown scores.
+    csv = _write(tmp_path, HEADER +
+        "2000-01-01,A,B,NA,NA,Friendly,X,Y,FALSE\n"
+        "2000-01-02,C,D,2,1,Friendly,X,Y,FALSE\n")
+    matches = load_matches(csv)
+    assert [m.date for m in matches] == ["2000-01-02"]
+
+
 def test_load_sorts_by_date_stable(tmp_path):
     csv = _write(tmp_path, HEADER +
         "2000-03-01,C,D,1,1,F,X,Y,FALSE\n"

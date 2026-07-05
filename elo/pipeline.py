@@ -10,12 +10,21 @@ from elo.ratings import DEFAULT_K, INITIAL_RATING, Match, compute
 from elo.site_data import write_site_data
 
 
+def _parse_int(value: str) -> int | None:
+    try:
+        return int(value.strip())
+    except ValueError:
+        return None
+
+
 def load_matches(csv_path: str | Path, since: int | None = None) -> list[Match]:
     rows: list[tuple[int, Match]] = []
     with open(csv_path, newline="", encoding="utf-8") as fh:
         for i, row in enumerate(csv.DictReader(fh)):
-            hs, as_ = row["home_score"].strip(), row["away_score"].strip()
-            if not hs or not as_:
+            # Skip rows without a real score: empty cells or placeholders like "NA".
+            goals_a = _parse_int(row["home_score"])
+            goals_b = _parse_int(row["away_score"])
+            if goals_a is None or goals_b is None:
                 continue
             date = row["date"].strip()
             if since is not None and int(date[:4]) < since:
@@ -24,8 +33,8 @@ def load_matches(csv_path: str | Path, since: int | None = None) -> list[Match]:
                 date=date,
                 team_a=row["home_team"].strip(),
                 team_b=row["away_team"].strip(),
-                goals_a=int(hs),
-                goals_b=int(as_),
+                goals_a=goals_a,
+                goals_b=goals_b,
             )))
     # stable sort by date; original index breaks ties to preserve CSV order
     rows.sort(key=lambda pair: (pair[1].date, pair[0]))
