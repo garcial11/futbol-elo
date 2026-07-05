@@ -1,6 +1,10 @@
 # Cached raw dataset (re-downloaded on demand)
 data/raw/
 
+# Generated site data — the site now computes live in the browser, so this is
+# no longer served. `python -m elo update` may still write it locally.
+docs/data/
+
 # Python
 __pycache__/
 *.py[cod]

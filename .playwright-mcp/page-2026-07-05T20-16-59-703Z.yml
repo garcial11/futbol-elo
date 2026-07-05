@@ -1,0 +1,28 @@
+- generic [active] [ref=f5e1]:
+  - banner [ref=f5e2]:
+    - heading "Futbol Elo Rankings" [level=1] [ref=f5e3]
+    - paragraph
+    - navigation [ref=f5e4]:
+      - button "Rankings" [ref=f5e5] [cursor=pointer]
+      - button "Team" [ref=f5e6] [cursor=pointer]
+      - button "Compare" [ref=f5e7] [cursor=pointer]
+      - button "What if?" [ref=f5e8] [cursor=pointer]
+      - button "Method" [ref=f5e9] [cursor=pointer]
+  - main [ref=f5e10]:
+    - generic [ref=f5e11]:
+      - searchbox "Search team…" [ref=f5e12]
+      - generic [ref=f5e13]:
+        - generic [ref=f5e14]:
+          - text: Ranking as of
+          - textbox "Ranking as of" [ref=f5e15]
+        - button "Today" [ref=f5e16] [cursor=pointer]
+      - table [ref=f5e18]:
+        - rowgroup [ref=f5e19]:
+          - row "# Team Rating Matches Peak Last match" [ref=f5e20]:
+            - columnheader "#" [ref=f5e21] [cursor=pointer]
+            - columnheader "Team" [ref=f5e22] [cursor=pointer]
+            - columnheader "Rating" [ref=f5e23] [cursor=pointer]
+            - columnheader "Matches" [ref=f5e24] [cursor=pointer]
+            - columnheader "Peak" [ref=f5e25] [cursor=pointer]
+            - columnheader "Last match" [ref=f5e26] [cursor=pointer]
+        - rowgroup

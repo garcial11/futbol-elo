@@ -1,20 +1,101 @@
-const DATA = "data";
+// Pure-Elo ratings, computed live in your browser from the open source dataset.
+// No precomputed files, no server, no update step — the page is current on every load.
+const CSV_SOURCES = [
+  "https://raw.githubusercontent.com/martj42/international_results/master/results.csv",
+  "https://cdn.jsdelivr.net/gh/martj42/international_results@master/results.csv",
+];
+const K_FACTOR = 32, INITIAL = 1500;
 const COLORS = ["#38bdf8", "#f87171", "#4ade80", "#fbbf24", "#c084fc"];
-const state = { meta:null, rankings:[], cache:{}, sortKey:"rank", sortDir:1,
+const state = { meta:null, rankings:[], teams:{}, sortKey:"rank", sortDir:1,
                 teamChart:null, compareChart:null, compare:new Set(),
                 asOf:null, asOfRows:[] };
-let historyData = null;
 
-async function loadJSON(p){ const r = await fetch(p); if(!r.ok) throw new Error(p); return r.json(); }
-async function getTeam(slug){
-  if(!state.cache[slug]) state.cache[slug] = await loadJSON(`${DATA}/teams/${slug}.json`);
-  return state.cache[slug];
-}
 const rnd = n => Math.round(n);
+const round1 = x => Math.round(x * 10) / 10;
 const ts = d => Date.parse(d);
 const yearOf = d => +d.slice(0,4);
 const esc = s => s.replace(/[&<>"']/g, c =>
   ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c]));
+const getTeam = slug => state.teams[slug];   // in-memory; stays fine behind `await`
+
+async function loadCSV(){
+  let err;
+  for(const url of CSV_SOURCES){
+    try { const r = await fetch(url); if(r.ok) return r.text(); err = new Error(`${url} -> ${r.status}`); }
+    catch(e){ err = e; }
+  }
+  throw err || new Error("no data source reachable");
+}
+function parseCSV(text){
+  if(text.charCodeAt(0) === 0xFEFF) text = text.slice(1);   // strip BOM if present
+  const rows = []; let field = "", row = [], inQ = false;
+  for(let i = 0; i < text.length; i++){
+    const c = text[i];
+    if(inQ){
+      if(c === '"'){ if(text[i + 1] === '"'){ field += '"'; i++; } else inQ = false; }
+      else field += c;
+    } else if(c === '"') inQ = true;
+    else if(c === ',') { row.push(field); field = ""; }
+    else if(c === '\n'){ row.push(field); rows.push(row); row = []; field = ""; }
+    else if(c !== '\r') field += c;
+  }
+  if(field.length || row.length){ row.push(field); rows.push(row); }
+  return rows;
+}
+const INT_RE = /^-?\d+$/;
+function buildMatches(rows){
+  const H = rows[0], ci = n => H.indexOf(n);
+  const di = ci("date"), hti = ci("home_team"), ati = ci("away_team"),
+        hsi = ci("home_score"), asi = ci("away_score");
+  const matches = [];
+  for(let i = 1; i < rows.length; i++){
+    const r = rows[i];
+    if(r.length <= asi) continue;
+    const hs = (r[hsi] || "").trim(), as = (r[asi] || "").trim();
+    if(!INT_RE.test(hs) || !INT_RE.test(as)) continue;   // skip empty / "NA" / future fixtures
+    matches.push({ i, date: (r[di] || "").trim(), a: (r[hti] || "").trim(),
+                   b: (r[ati] || "").trim(), ga: +hs, gb: +as });
+  }
+  matches.sort((x, y) => x.date < y.date ? -1 : x.date > y.date ? 1 : x.i - y.i);  // stable by date
+  return matches;
+}
+function slugify(name){
+  return name.normalize("NFKD").replace(/[̀-ͯ]/g, "").toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+}
+function computeSite(matches){
+  const ratings = {}, history = {};
+  for(const m of matches){
+    const ra = ratings[m.a] ?? INITIAL, rb = ratings[m.b] ?? INITIAL;
+    const ea = 1 / (1 + Math.pow(10, (rb - ra) / 400));
+    const sa = m.ga > m.gb ? 1 : m.ga === m.gb ? 0.5 : 0;
+    const na = ra + K_FACTOR * (sa - ea), nb = rb + K_FACTOR * ((1 - sa) - (1 - ea));
+    ratings[m.a] = na; ratings[m.b] = nb;
+    const rA = sa === 1 ? "W" : sa === 0 ? "L" : "D";
+    const rB = sa === 1 ? "L" : sa === 0 ? "W" : "D";
+    (history[m.a] || (history[m.a] = [])).push(
+      { date: m.date, rating: na, opponent: m.b, result: rA, score: `${m.ga}-${m.gb}` });
+    (history[m.b] || (history[m.b] = [])).push(
+      { date: m.date, rating: nb, opponent: m.a, result: rB, score: `${m.gb}-${m.ga}` });
+  }
+  const ordered = Object.keys(ratings).sort((a, b) => (ratings[b] - ratings[a]) || (a < b ? -1 : 1));
+  const taken = new Set(), rankings = [], teams = {};
+  ordered.forEach((team, i) => {
+    let base = slugify(team) || "team", slug = base, n = 2;
+    while(taken.has(slug)){ slug = `${base}-${n}`; n++; }
+    taken.add(slug);
+    const h = history[team];
+    let peak = h[0];
+    for(let j = 1; j < h.length; j++) if(h[j].rating > peak.rating) peak = h[j];
+    rankings.push({ rank: i + 1, team, slug, rating: round1(ratings[team]), matches: h.length,
+      last_match: h[h.length - 1].date, peak: round1(peak.rating), peak_date: peak.date });
+    teams[slug] = { team, slug, history: h.map(e => ({ date: e.date, rating: round1(e.rating),
+      opponent: e.opponent, result: e.result, score: e.score })) };
+  });
+  const meta = { k: K_FACTOR, match_count: matches.length, team_count: ordered.length,
+    date_range: [matches[0].date, matches[matches.length - 1].date] };
+  return { rankings, teams, meta };
+}
 
 // tabs
 document.querySelectorAll(".tab").forEach(btn => btn.addEventListener("click", () => {
@@ -37,30 +118,25 @@ function renderRankings(){
     `<td>${t.matches}</td><td>${rnd(t.peak)}</td><td>${t.last_match}</td></tr>`).join("");
 }
 
-// ranking as of a past date, reconstructed from the consolidated history file
-async function loadHistory(){
-  if(!historyData) historyData = await loadJSON(`${DATA}/history.json`);
-  return historyData;
-}
+// ranking as of a past date, reconstructed from the in-memory team histories
 function computeAsOf(dateStr){
   const rows = [];
-  for(const slug in historyData){
-    const { t, h } = historyData[slug];
+  for(const slug in state.teams){
+    const t = state.teams[slug];
     let rating = null, matches = 0, peak = -1, last = null;
-    for(const [d, r] of h){            // history is chronological; ISO dates sort as strings
-      if(d <= dateStr){ rating = r; matches++; if(r > peak) peak = r; last = d; }
+    for(const e of t.history){          // chronological; ISO dates sort as strings
+      if(e.date <= dateStr){ rating = e.rating; matches++; if(e.rating > peak) peak = e.rating; last = e.date; }
       else break;
     }
-    if(rating !== null) rows.push({ team: t, slug, rating, matches, peak, last_match: last });
+    if(rating !== null) rows.push({ team: t.team, slug, rating, matches, peak, last_match: last });
   }
   rows.sort((a,b) => b.rating - a.rating || (a.team < b.team ? -1 : 1));
   rows.forEach((row, i) => row.rank = i + 1);
   return rows;
 }
-async function applyAsOf(dateStr){
+function applyAsOf(dateStr){
   const label = document.getElementById("asof-label");
   if(!dateStr){ state.asOf = null; label.textContent = ""; renderRankings(); return; }
-  await loadHistory();
   state.asOf = dateStr;
   state.asOfRows = computeAsOf(dateStr);
   label.textContent = `${state.asOfRows.length} teams had played by ${dateStr}`;
@@ -138,7 +214,7 @@ function renderRecent(t){
 }
 
 // compare view — search box + removable chips (up to 5 teams)
-const teamName = slug => (state.rankings.find(t => t.slug === slug) || {}).team || slug;
+const teamName = slug => (state.teams[slug] || {}).team || slug;
 
 function renderChips(){
   const box = document.getElementById("compare-chips");
@@ -340,11 +416,21 @@ function fillMethod(){
 
 // init
 (async function(){
-  state.meta = await loadJSON(`${DATA}/meta.json`);
-  state.rankings = await loadJSON(`${DATA}/rankings.json`);
-  document.getElementById("meta-line").textContent =
+  const metaLine = document.getElementById("meta-line");
+  metaLine.textContent = "Computing ratings from the latest results…";
+  let site;
+  try {
+    const text = await loadCSV();
+    site = computeSite(buildMatches(parseCSV(text)));
+  } catch(e){
+    console.error(e);
+    metaLine.textContent = "Couldn't reach the live match data — please refresh in a moment.";
+    return;
+  }
+  state.meta = site.meta; state.rankings = site.rankings; state.teams = site.teams;
+  metaLine.textContent =
     `${state.meta.team_count} teams · ${state.meta.match_count.toLocaleString()} matches · ` +
-    `K=${state.meta.k} · updated ${state.meta.generated_at}`;
+    `K=${state.meta.k} · computed live · latest ${state.meta.date_range[1]}`;
   const y0 = yearOf(state.meta.date_range[0]), y1 = yearOf(state.meta.date_range[1]);
   for(const id of ["year-min","year-max"]){
     const el = document.getElementById(id); el.min = y0; el.max = y1;
