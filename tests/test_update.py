@@ -2,6 +2,7 @@ import json
 from pathlib import Path
 import pytest
 from elo.pipeline import run_update, format_summary
+from elo import cli
 
 FIXTURE = Path(__file__).parent / "fixtures" / "mini_results.csv"
 
@@ -24,3 +25,15 @@ def test_format_summary_mentions_top_team(tmp_path):
     text = format_summary(site)
     assert "Brazil" in text
     assert "2 matches" in text
+
+
+def test_cli_update_no_fetch_no_push(tmp_path, monkeypatch, capsys):
+    monkeypatch.chdir(tmp_path)
+    # place the fixture where --no-fetch expects the cache
+    cache = tmp_path / "data" / "raw" / "results.csv"
+    cache.parent.mkdir(parents=True)
+    cache.write_text(FIXTURE.read_text())
+    rc = cli.main(["update", "--no-fetch", "--no-push"])
+    assert rc == 0
+    assert (tmp_path / "docs" / "data" / "rankings.json").exists()
+    assert "Brazil" in capsys.readouterr().out
