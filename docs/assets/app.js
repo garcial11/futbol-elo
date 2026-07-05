@@ -42,18 +42,24 @@ function parseCSV(text){
   if(field.length || row.length){ row.push(field); rows.push(row); }
   return rows;
 }
-const INT_RE = /^-?\d+$/;
+const INT_RE = /^[+-]?\d+$/;
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 function buildMatches(rows){
   const H = rows[0], ci = n => H.indexOf(n);
   const di = ci("date"), hti = ci("home_team"), ati = ci("away_team"),
         hsi = ci("home_score"), asi = ci("away_score");
+  if([di, hti, ati, hsi, asi].some(x => x < 0))
+    throw new Error("CSV columns not as expected: " + H.join(","));
+  const need = Math.max(di, hti, ati, hsi, asi);
   const matches = [];
   for(let i = 1; i < rows.length; i++){
     const r = rows[i];
-    if(r.length <= asi) continue;
+    if(r.length <= need) continue;
+    const date = (r[di] || "").trim();
+    if(!DATE_RE.test(date)) continue;   // drop malformed/hostile dates (keeps innerHTML + Date.parse safe)
     const hs = (r[hsi] || "").trim(), as = (r[asi] || "").trim();
     if(!INT_RE.test(hs) || !INT_RE.test(as)) continue;   // skip empty / "NA" / future fixtures
-    matches.push({ i, date: (r[di] || "").trim(), a: (r[hti] || "").trim(),
+    matches.push({ i, date, a: (r[hti] || "").trim(),
                    b: (r[ati] || "").trim(), ga: +hs, gb: +as });
   }
   matches.sort((x, y) => x.date < y.date ? -1 : x.date > y.date ? 1 : x.i - y.i);  // stable by date
@@ -115,7 +121,7 @@ function renderRankings(){
     .sort((a,b) => (a[k] > b[k] ? 1 : a[k] < b[k] ? -1 : 0) * dir);
   document.querySelector("#rankings-table tbody").innerHTML = rows.map(t =>
     `<tr><td>${t.rank}</td><td>${esc(t.team)}</td><td>${rnd(t.rating)}</td>` +
-    `<td>${t.matches}</td><td>${rnd(t.peak)}</td><td>${t.last_match}</td></tr>`).join("");
+    `<td>${t.matches}</td><td>${rnd(t.peak)}</td><td>${esc(t.last_match)}</td></tr>`).join("");
 }
 
 // ranking as of a past date, reconstructed from the in-memory team histories
@@ -201,7 +207,7 @@ function renderRecent(t){
   for(let i = h.length - 1; i >= 0 && rows.length < 10; i--){
     const prev = i > 0 ? h[i - 1].rating : 1500;   // first-ever match starts from 1500
     rows.push(
-      `<tr><td>${h[i].date}</td><td>${esc(h[i].opponent)}</td>` +
+      `<tr><td>${esc(h[i].date)}</td><td>${esc(h[i].opponent)}</td>` +
       `<td class="res-${h[i].result}">${h[i].result}</td>` +
       `<td class="num">${h[i].score}</td>` +
       `<td class="num">${rnd(h[i].rating)}</td>` +
@@ -284,7 +290,11 @@ async function renderCompare(){
   if(state.compareChart) state.compareChart.destroy();
   state.compareChart = new Chart(document.getElementById("compare-chart"), lineConfig(series));
 }
-["year-min","year-max"].forEach(id => document.getElementById(id).addEventListener("input", () => {
+["year-min","year-max"].forEach(id => document.getElementById(id).addEventListener("input", e => {
+  const lo = document.getElementById("year-min"), hi = document.getElementById("year-max");
+  if(+lo.value > +hi.value){                       // keep From <= To by dragging the other along
+    if(e.target === lo) hi.value = lo.value; else lo.value = hi.value;
+  }
   if(state.compare.size) renderCompare(); else labelRange();
 }));
 
@@ -380,7 +390,7 @@ function renderH2H(A, B, h2h){
   }
   const rec = h2h.reduce((a, m) => (a[m.result]++, a), { W: 0, D: 0, L: 0 });
   const list = h2h.slice().reverse().map(m =>   // most recent first
-    `<tr><td>${m.date}</td><td class="res-${m.result}">${m.result}</td>` +
+    `<tr><td>${esc(m.date)}</td><td class="res-${m.result}">${m.result}</td>` +
     `<td class="num">${m.score}</td></tr>`).join("");
   box.innerHTML =
     `<h3 class="wi-h2h-title">Head-to-head · ${h2h.length} match${h2h.length > 1 ? "es" : ""}</h3>` +
@@ -424,7 +434,7 @@ function fillMethod(){
     site = computeSite(buildMatches(parseCSV(text)));
   } catch(e){
     console.error(e);
-    metaLine.textContent = "Couldn't reach the live match data — please refresh in a moment.";
+    metaLine.textContent = "Couldn't load the live match data (source unavailable or its format changed). Try a hard-refresh.";
     return;
   }
   state.meta = site.meta; state.rankings = site.rankings; state.teams = site.teams;

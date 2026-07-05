@@ -18,3 +18,5 @@ venv/
 # Browser-automation scratch (Playwright MCP) and local screenshots
 .playwright-mcp/
 *.jpeg
+*.jpg
+*.png

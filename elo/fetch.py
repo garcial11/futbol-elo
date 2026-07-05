@@ -9,7 +9,7 @@ DEFAULT_CACHE = Path("data/raw/results.csv")
 
 
 def _download(url: str, dest: Path) -> None:
-    with urllib.request.urlopen(url) as resp:  # noqa: S310 (trusted GitHub raw URL)
+    with urllib.request.urlopen(url, timeout=30) as resp:  # noqa: S310 (trusted GitHub raw URL)
         Path(dest).write_bytes(resp.read())
 
 
