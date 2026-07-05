@@ -1,0 +1,4 @@
+date,home_team,away_team,home_score,away_score,tournament,city,country,neutral
+2000-01-01,Aland,Brazil,0,3,Friendly,Town,Country,FALSE
+2000-01-02,Brazil,Argentina,2,2,Friendly,Town,Country,TRUE
+2000-01-03,Argentina,Aland,,,Friendly,Town,Country,FALSE
