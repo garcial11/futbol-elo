@@ -14,9 +14,21 @@ ROOT = Path(__file__).parent.parent
 ENGINE = ROOT / "docs" / "assets" / "engine.js"
 FIXTURE = Path(__file__).parent / "fixtures" / "mini_results.csv"
 
-# Tricky names to exercise slugify (accents, cedillas, undecomposable letters, punctuation).
+# Names that exercise slugify. The first row is regression cover: every one of them decomposes
+# under NFKD, so both the Python and the JS implementation have always agreed on them. They cannot
+# fail. They are also, for that reason, the reason the original version of this test was useless.
+#
+# The second row is the part that discriminates. The letters đ ø ł æ have no NFKD decomposition,
+# so the old JS slugify (which only stripped combining marks) left them in place and turned them
+# into hyphens, while Python dropped them. Position matters and it is the whole trick: the letter
+# has to sit INSIDE the word. At the start or the end the stray hyphen is trimmed off again and
+# both implementations agree anyway, which is why "Tromsø", "Łódź" and "Ærø" look tricky and
+# discriminate nothing. "Đorđe" slugs to "or-e" under the old JS and "ore" under Python.
+#
+# Adding a fixture that cannot fail is the same mistake twice. See HOW-THIS-WAS-BUILT.md.
 NAMES = ["Curaçao", "Côte d'Ivoire", "São Tomé and Príncipe", "Guinea-Bissau",
-         "Åland", "Bosnia and Herzegovina", "St. Kitts and Nevis", "Türkiye"]
+         "Åland", "Bosnia and Herzegovina", "St. Kitts and Nevis", "Türkiye",
+         "Đorđe", "Bjørn", "Wisła", "Sæby"]
 
 pytestmark = pytest.mark.skipif(shutil.which("node") is None, reason="node not installed")
 
