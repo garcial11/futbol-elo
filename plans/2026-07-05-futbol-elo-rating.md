@@ -12,10 +12,11 @@
 
 - **Python 3.10+**, **standard library only** in `elo/` at runtime — no third-party imports. `pytest` is the only dev dependency.
 - **Pure Elo:** K default **32**, initial rating **1500.0**, expected score `1/(1+10**((Rb-Ra)/400))`. **No** home/away, match-importance, friendly, or goal-margin adjustment. Result is win/draw/loss only (win=1.0, draw=0.5, loss=0.0).
-- **Website:** no external network calls at runtime. Chart.js is vendored at `docs/assets/chart.min.js`. No build step, no framework.
+- **Website:** no external network calls at runtime. *(Correction, 2026-07-12: no longer true after `7a05f46`, which moved the compute into the browser and fetches the CSV from raw.githubusercontent.com with a jsDelivr fallback.)* Chart.js is vendored at `docs/assets/chart.min.js`. No build step, no framework.
 - **Data layout:** generated site data under `docs/data/` (committed); raw download cache under `data/raw/` (gitignored, already in `.gitignore`).
 - **Match ordering:** sort by date ascending, stable (same-day matches keep CSV order). Every team seeded at 1500 on first appearance. Rows with an empty home or away score are skipped.
 - **Team names as-is:** no name merging (West Germany ≠ Germany).
+  *(Correction, 2026-07-12: the dataset has no "West Germany" row. It records the FRG as "Germany" and the USSR as "Russia". The no-merge rule stands; the example is false. See §0 of the spec.)*
 - Commit after every task with a conventional-commit message.
 
 ## File Structure

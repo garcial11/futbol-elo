@@ -3,6 +3,23 @@
 **Date:** 2026-07-05
 **Status:** Approved for planning
 
+## 0. Corrections (added 2026-07-12)
+
+This spec was written by the coding agent before it read the data. Two things in it are
+wrong. They are corrected here rather than silently edited, because the original text is
+the point: a wrong assumption in a document labeled "locked" is treated as a fact by
+everything downstream.
+
+1. **"West Germany ≠ Germany" (section 2 table, and section 11) is false.** The
+   martj42/international_results dataset has no "West Germany" row. It records the FRG as
+   "Germany" and the USSR as "Russia". East Germany appears, as "German DR". The
+   as-is/no-merge rule still holds; the example given for it does not exist.
+2. **"Fully self-contained (no CDN)" (section 2 table) and "no external network calls"
+   (section 8) no longer describe the system.** As of commit `7a05f46` the page computes
+   ratings in the browser and fetches `results.csv` from `raw.githubusercontent.com` on
+   every load, with `cdn.jsdelivr.net` as a fallback. The spec was never reconciled with
+   that pivot.
+
 ## 1. Goal
 
 A pure-Elo rating system for men's international football. A single local command
@@ -20,8 +37,8 @@ renders the current ranking plus historic trend and head-to-head comparison char
 | Scope | **Men's national teams** (martj42/international_results) |
 | Adjustments | **None** — no match importance, no home/away, no friendly weighting |
 | Deploy | One command recomputes and **auto commits + pushes**; `--no-push` to skip |
-| Team names | Treated **as-is** from the raw data (West Germany ≠ Germany); optional alias map for later |
-| Hosting | GitHub Pages from **`docs/` on `main`**, fully self-contained (no CDN) |
+| Team names | Treated **as-is** from the raw data (West Germany ≠ Germany); optional alias map for later *(the West Germany example is false, see §0)* |
+| Hosting | GitHub Pages from **`docs/` on `main`**, fully self-contained (no CDN) *(no longer true after `7a05f46`, see §0)* |
 | Dependencies | **Python standard library only** at runtime; `pytest` for tests |
 
 ## 3. The Elo engine (exact math)
@@ -177,6 +194,7 @@ or tabs):
 3. **Compare** — overlay up to 5 teams on one chart, with a year-range slider to zoom the timeline.
 
 No external network calls: Chart.js is vendored, data is same-origin JSON. Works offline.
+*(No longer true after `7a05f46`. See §0.)*
 
 ## 9. Deployment
 
@@ -202,6 +220,7 @@ No external network calls: Chart.js is vendored, data is same-origin JSON. Works
 - Same-date matches -> stable order preserving CSV sequence.
 - First appearance of a team -> seeded at 1500.
 - Name changes (West Germany, Yugoslavia, Serbia, Czechoslovakia) -> distinct teams by default.
+  *(West Germany is not in the dataset. See §0.)*
   Optional `aliases.json` (variant -> canonical) applied at load if the file is present.
 - `deploy` with no changes -> commit skipped, no error.
 
